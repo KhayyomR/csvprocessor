@@ -33,13 +33,17 @@
       button:hover {
         background-color: #45a049;
       }
+      button:disabled {
+        background-color: #a5bca6;
+        color: white;
+      }
       #emailTemplate {
         width: 100%;
         height: 200px;
         margin-top: 10px;
       }
       .preview {
-        margin-top: 20px;
+        margin-top: 60px;
         padding: 10px;
         border: 1px solid #ddd;
         border-radius: 4px;
@@ -60,6 +64,7 @@
       #tablePreview {
         margin-top: 20px;
         overflow-x: auto;
+        display: none; /* Hide table preview by default */
       }
       table {
         border-collapse: collapse;
@@ -79,21 +84,24 @@
   <body>
     <div class="container">
       <h2>CSV Processor and Email Generator</h2>
-
+      <div id="status"></div>
+      <br /><br />
       <div>
         <input type="file" id="csvFile" accept=".csv" />
         <div class="button-group">
           <button onclick="processCSV()">Process CSV</button>
-          <button onclick="exportXLSX()">Export XLSX</button>
-          <button onclick="sendEmail()">Send Email</button>
         </div>
+
         <div id="tablePreview">
           <h3>Table Preview</h3>
           <table id="previewTable"></table>
         </div>
+        <div class="button-group">
+          <button id="exportButton" onclick="exportXLSX()" disabled>
+            Export XLSX
+          </button>
+        </div>
       </div>
-
-      <div id="status"></div>
 
       <div class="preview">
         <h3>Email Template Preview</h3>
@@ -104,6 +112,9 @@
         <div>
           <label>Body:</label>
           <textarea id="emailTemplate"></textarea>
+        </div>
+        <div class="button-group">
+          <button onclick="sendEmail()">Send Email</button>
         </div>
       </div>
     </div>
@@ -250,6 +261,10 @@
 
                 // Update table preview
                 updateTablePreview();
+
+                // Show table preview and enable export button
+                document.getElementById("tablePreview").style.display = "block";
+                document.getElementById("exportButton").disabled = false;
 
                 showStatus("CSV processed successfully", "success");
               } catch (error) {
