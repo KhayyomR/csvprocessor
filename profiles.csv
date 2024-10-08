@@ -5,6 +5,6 @@ default,,発注ご担当者,,yokazaki@bossard.co.jp,ARIMS発注のお知らせ {
 いつもお世話になります。
 ご注文書の発行を何卒宜しくお願い申し上げます。
 
-ボサード株式会社",ID;URNO;SURYO;BIKO;IMPDATE,SURYO:単価;HB_HINNM:商品名
-878299,光永産業株式会社,,sales@mitsunaga.jp,,,,URNO;ID;SURYO;BIKO;IMPDATE,TOKCD:CustomerNumber;JYYMD:OrderDate;HINCD:ProductCode
-123456,Sample Company Ltd.,John Doe,john@sample.com,NONE,,,JSYO1;TOKCD;ID;JYYMD;URNO;SURYO;HB_HINNM;BIKO;IMPDATE;HINNM,TOKCD:CustomerNumber;JYYMD:OrderDate;HINCD:ProductCode
+ボサード株式会社",URNO;GYONO;JYYMD;PAN;HINCD;USERHINCD;HINNM;HB_SPOA;HB_SPOB;HB_SPOC;TANK;SURYO;ADMINPLACE;SETPLACE;PRIORITY,URNO:ordernumber;GYONO:Position;HB_SPOA:dimA;HB_SPOB:dimB;HB_SPOC:dimC;TANK:Price;SURYO:quantity;JYYMD:orderdate;PAN:PAN;HINCD:supplieritemNo;USERHINCD:customeritemNo;ADMINPLACE:site;SETPLACE:Location;PRIORITY:Priority;HINNM:Description;NOYMD:deliverydate;YAKNOYMD:promiseddate
+878299,光永産業株式会社,,sales@mitsunaga.jp,,,,,URNO:ordernumber;GYONO:Position;HB_SPOA:dimA;HB_SPOB:dimB;HB_SPOC:dimC;TANK:Price;SURYO:quantity;JYYMD:orderdate;PAN:PAN;HINCD:supplieritemNo;USERHINCD:customeritemNo;ADMINPLACE:site;SETPLACE:Location;PRIORITY:Priority;HINNM:Description;NOYMD:deliverydate;YAKNOYMD:promiseddate
+123456,Sample Company Ltd.,John Doe,john@sample.com,NONE,,,JSYO1;TOKCD;ID;JYYMD;URNO;SURYO;HB_HINNM;BIKO;IMPDATE;HINNM,URNO:注文番号;GYONO:位置;HB_SPOA:dimA;HB_SPOB:di mB;HB_SPOC:dimC;TANK:価格;SURYO:数量;JYYMD:注文日;PAN:PAN;HINCD:仕入先品目番号;USERHINCD:顧客品目番号;ADMINPLACE:サイト;SETPLACE:場所;PRIORITY:優先度;HINNM:説明;NOYMD:納品日;YAKNOYMD:約束日
