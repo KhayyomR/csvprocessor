@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html>
-  <head>    
+  <head>
     <meta charset="UTF-8" />
     <title>CSV Processor</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -57,10 +57,27 @@
         background-color: #f2dede;
         color: #a94442;
       }
+      #tablePreview {
+        margin-top: 20px;
+        overflow-x: auto;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+      }
+      th {
+        background-color: #f2f2f2;
+      }
     </style>
   </head>
   <body>
-        <div class="container">
+    <div class="container">
       <h2>CSV Processor and Email Generator</h2>
 
       <div>
@@ -70,6 +87,10 @@
           <button onclick="exportXLSX()">Export XLSX</button>
           <button onclick="sendEmail()">Send Email</button>
         </div>
+        <div id="tablePreview">
+          <h3>Table Preview</h3>
+          <table id="previewTable"></table>
+        </div>
       </div>
 
       <div id="status"></div>
@@ -78,7 +99,7 @@
         <h3>Email Template Preview</h3>
         <div>
           <label>Subject:</label>
-          <input type="text" id="emailSubject" style="width: 100%" />
+          <input type="text" id="emailSubject" style="width: 100%;" />
         </div>
         <div>
           <label>Body:</label>
@@ -92,6 +113,7 @@
       let customerProfiles = null;
       let matchedProfile = null;
       let defaultProfile = null;
+      let renamedColumns = {};
 
       // Load customer profiles on startup
       fetch("profiles.csv")
@@ -203,18 +225,32 @@
                   );
                 }
 
-                // Process data according to column order
+                // Process ColumnsRename
+                renamedColumns = {};
+                if (matchedProfile.ColumnsRename) {
+                  matchedProfile.ColumnsRename.split(";").forEach((pair) => {
+                    const [oldName, newName] = pair.split(":");
+                    renamedColumns[oldName] = newName;
+                  });
+                }
+
+                // Process data according to column order and rename columns
                 const columnOrder = matchedProfile.ColumnOrder.split(";");
                 processedData = data.map((row) => {
                   const newRow = {};
                   columnOrder.forEach((col) => {
-                    newRow[col] = row[col] || "";
+                    const newColName = renamedColumns[col] || col;
+                    newRow[newColName] = row[col] || "";
                   });
                   return newRow;
                 });
 
                 // Update email template
                 updateEmailTemplate(data[0]["JYYMD"]);
+
+                // Update table preview
+                updateTablePreview();
+
                 showStatus("CSV processed successfully", "success");
               } catch (error) {
                 showStatus("Error processing CSV: " + error.message, "error");
@@ -226,6 +262,53 @@
           });
         };
         reader.readAsText(file, "Shift-JIS");
+      }
+
+      function updateTablePreview() {
+        const table = document.getElementById("previewTable");
+        table.innerHTML = "";
+
+        if (processedData && processedData.length > 0) {
+          // Create table header
+          const headerRow = table.insertRow();
+          Object.keys(processedData[0]).forEach((key) => {
+            const th = document.createElement("th");
+            th.textContent = key;
+            headerRow.appendChild(th);
+          });
+
+          // Create table body (first 5 rows)
+          processedData.slice(0, 5).forEach((row) => {
+            const tr = table.insertRow();
+            Object.values(row).forEach((value) => {
+              const td = tr.insertCell();
+              td.textContent = value;
+            });
+          });
+        }
+      }
+
+      function exportXLSX() {
+        if (!processedData) {
+          showStatus("Please process a CSV file first", "error");
+          return;
+        }
+
+        try {
+          const worksheet = XLSX.utils.json_to_sheet(processedData);
+          const workbook = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(workbook, worksheet, "Processed Data");
+
+          const today = new Date();
+          const filename = `processed_data_${today.getFullYear()}${String(
+            today.getMonth() + 1
+          ).padStart(2, "0")}${String(today.getDate()).padStart(2, "0")}.xlsx`;
+
+          XLSX.writeFile(workbook, filename);
+          showStatus("XLSX file exported successfully", "success");
+        } catch (error) {
+          showStatus("Error exporting XLSX: " + error.message, "error");
+        }
       }
 
       function updateEmailTemplate(orderDate) {
@@ -249,30 +332,6 @@
             "Error updating email template: " + error.message,
             "error"
           );
-        }
-      }
-
-      // Previous exportXLSX function remains the same
-      function exportXLSX() {
-        if (!processedData) {
-          showStatus("Please process a CSV file first", "error");
-          return;
-        }
-
-        try {
-          const worksheet = XLSX.utils.json_to_sheet(processedData);
-          const workbook = XLSX.utils.book_new();
-          XLSX.utils.book_append_sheet(workbook, worksheet, "Processed Data");
-
-          const today = new Date();
-          const filename = `processed_data_${today.getFullYear()}${String(
-            today.getMonth() + 1
-          ).padStart(2, "0")}${String(today.getDate()).padStart(2, "0")}.xlsx`;
-
-          XLSX.writeFile(workbook, filename);
-          showStatus("XLSX file exported successfully", "success");
-        } catch (error) {
-          showStatus("Error exporting XLSX: " + error.message, "error");
         }
       }
 
