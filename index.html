@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <!-- Previous head content remains the same -->
+    <meta charset="UTF-8" />
+    <title>CSV Processor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <style>
+      /* Previous styles remain the same */
+      body {
+        font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN",
+          "Hiragino Sans", Meiryo, sans-serif;
+        max-width: 800px;
+        margin: 20px auto;
+        padding: 20px;
+      }
+      .container {
+        border: 1px solid #ccc;
+        padding: 20px;
+        border-radius: 5px;
+      }
+      .button-group {
+        margin-top: 20px;
+      }
+      button {
+        padding: 10px 20px;
+        margin-right: 10px;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button:hover {
+        background-color: #45a049;
+      }
+      #emailTemplate {
+        width: 100%;
+        height: 200px;
+        margin-top: 10px;
+      }
+      .preview {
+        margin-top: 20px;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      #status {
+        margin-top: 10px;
+        padding: 10px;
+        border-radius: 4px;
+      }
+      .success {
+        background-color: #dff0d8;
+        color: #3c763d;
+      }
+      .error {
+        background-color: #f2dede;
+        color: #a94442;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Previous body content remains the same -->
+    <div class="container">
+      <h2>CSV Processor and Email Generator</h2>
+
+      <div>
+        <input type="file" id="csvFile" accept=".csv" />
+        <div class="button-group">
+          <button onclick="processCSV()">Process CSV</button>
+          <button onclick="exportXLSX()">Export XLSX</button>
+          <button onclick="sendEmail()">Send Email</button>
+        </div>
+      </div>
+
+      <div id="status"></div>
+
+      <div class="preview">
+        <h3>Email Template Preview</h3>
+        <div>
+          <label>Subject:</label>
+          <input type="text" id="emailSubject" style="width: 100%" />
+        </div>
+        <div>
+          <label>Body:</label>
+          <textarea id="emailTemplate"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let processedData = null;
+      let customerProfiles = null;
+      let matchedProfile = null;
+      let defaultProfile = null;
+
+      // Load customer profiles on startup
+      fetch("profiles.csv")
+        .then((response) => response.text())
+        .then((data) => {
+          Papa.parse(data, {
+            header: true,
+            encoding: "UTF-8",
+            complete: function (results) {
+              customerProfiles = results.data.filter(
+                (profile) =>
+                  profile.CustomerNumber && profile.CustomerNumber.trim() !== ""
+              );
+              defaultProfile = customerProfiles.find(
+                (profile) => profile.CustomerNumber === "default"
+              );
+              showStatus("Customer profiles loaded successfully", "success");
+            },
+            error: function (error) {
+              showStatus("Error loading profiles: " + error, "error");
+            },
+          });
+        })
+        .catch((error) =>
+          showStatus("Error loading profiles: " + error, "error")
+        );
+
+      function getEffectiveProfile(customerProfile) {
+        if (!customerProfile || !defaultProfile)
+          return customerProfile || defaultProfile;
+
+        // Create a new object to store the merged profile
+        let mergedProfile = { ...customerProfile };
+
+        // For each property in the default profile
+        Object.keys(defaultProfile).forEach((key) => {
+          // If the customer profile's value is empty or undefined, use the default value
+          if (!mergedProfile[key] || mergedProfile[key].trim() === "") {
+            mergedProfile[key] = defaultProfile[key];
+          }
+          // Special handling for CC field
+          if (key === "CC" && mergedProfile[key] === "NONE") {
+            mergedProfile[key] = "";
+          }
+        });
+
+        return mergedProfile;
+      }
+
+      function showStatus(message, type) {
+        const statusDiv = document.getElementById("status");
+        statusDiv.textContent = message;
+        statusDiv.className = type;
+      }
+
+      function formatDate(dateStr) {
+        // Handle different date formats
+        let date;
+        if (dateStr.includes("-")) {
+          // Handle YYYY-MM-DD format
+          date = new Date(dateStr);
+        } else if (dateStr.includes("/")) {
+          // Handle YYYY/MM/DD format
+          date = new Date(dateStr.replace(/\//g, "-"));
+        } else {
+          // Handle YYYYMMDD format
+          const year = dateStr.substring(0, 4);
+          const month = dateStr.substring(4, 6);
+          const day = dateStr.substring(6, 8);
+          date = new Date(`${year}-${month}-${day}`);
+        }
+
+        if (isNaN(date.getTime())) {
+          throw new Error("Invalid date format");
+        }
+
+        return `${date.getFullYear()}年${
+          date.getMonth() + 1
+        }月${date.getDate()}日`;
+      }
+
+      function processCSV() {
+        const fileInput = document.getElementById("csvFile");
+        const file = fileInput.files[0];
+        if (!file) {
+          showStatus("Please select a CSV file", "error");
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          Papa.parse(file, {
+            header: true,
+            encoding: "Shift-JIS",
+            complete: function (results) {
+              try {
+                const data = results.data;
+
+                // Find customer number from first row
+                const customerNumber = data[0]["TOKCD"].trim();
+                const foundProfile = customerProfiles.find(
+                  (profile) => profile.CustomerNumber === customerNumber
+                );
+                matchedProfile = getEffectiveProfile(foundProfile);
+
+                if (!matchedProfile) {
+                  throw new Error(
+                    "No matching profile found and no default profile available"
+                  );
+                }
+
+                // Process data according to column order
+                const columnOrder = matchedProfile.ColumnOrder.split(";");
+                processedData = data.map((row) => {
+                  const newRow = {};
+                  columnOrder.forEach((col) => {
+                    newRow[col] = row[col] || "";
+                  });
+                  return newRow;
+                });
+
+                // Update email template
+                updateEmailTemplate(data[0]["JYYMD"]);
+                showStatus("CSV processed successfully", "success");
+              } catch (error) {
+                showStatus("Error processing CSV: " + error.message, "error");
+              }
+            },
+            error: function (error) {
+              showStatus("Error parsing CSV: " + error, "error");
+            },
+          });
+        };
+        reader.readAsText(file, "Shift-JIS");
+      }
+
+      function updateEmailTemplate(orderDate) {
+        if (!matchedProfile) return;
+
+        try {
+          const formattedDate = formatDate(orderDate);
+
+          let subject = matchedProfile.Subject;
+          subject = subject.replace("{OrderDate}", formattedDate);
+
+          let body = matchedProfile.EmailText;
+          body = body
+            .replace("{CompanyName}", matchedProfile.CompanyName || "")
+            .replace("{PersonInCharge}", matchedProfile.PersonInCharge || "");
+
+          document.getElementById("emailSubject").value = subject;
+          document.getElementById("emailTemplate").value = body;
+        } catch (error) {
+          showStatus(
+            "Error updating email template: " + error.message,
+            "error"
+          );
+        }
+      }
+
+      // Previous exportXLSX function remains the same
+      function exportXLSX() {
+        if (!processedData) {
+          showStatus("Please process a CSV file first", "error");
+          return;
+        }
+
+        try {
+          const worksheet = XLSX.utils.json_to_sheet(processedData);
+          const workbook = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(workbook, worksheet, "Processed Data");
+
+          const today = new Date();
+          const filename = `processed_data_${today.getFullYear()}${String(
+            today.getMonth() + 1
+          ).padStart(2, "0")}${String(today.getDate()).padStart(2, "0")}.xlsx`;
+
+          XLSX.writeFile(workbook, filename);
+          showStatus("XLSX file exported successfully", "success");
+        } catch (error) {
+          showStatus("Error exporting XLSX: " + error.message, "error");
+        }
+      }
+
+      function sendEmail() {
+        if (!matchedProfile) {
+          showStatus("Please process a CSV file first", "error");
+          return;
+        }
+
+        const subject = document.getElementById("emailSubject").value;
+        const body = document.getElementById("emailTemplate").value;
+        const email = matchedProfile.CustomerEmail;
+        const cc = matchedProfile.CC;
+
+        try {
+          let mailtoLink = `mailto:${email}?subject=${encodeURIComponent(
+            subject
+          )}&body=${encodeURIComponent(body)}`;
+          if (cc && cc !== "NONE") {
+            mailtoLink += `&cc=${encodeURIComponent(cc)}`;
+          }
+
+          window.location.href = mailtoLink;
+          showStatus("Email client opened successfully", "success");
+        } catch (error) {
+          showStatus("Error opening email client: " + error.message, "error");
+        }
+      }
+    </script>
+  </body>
+</html>
