@@ -1,10 +1,10 @@
-CustomerNumber,CompanyName,PersonInCharge,CustomerEmail,CC,Subject,EmailText,ColumnOrder
+CustomerNumber,CompanyName,PersonInCharge,CustomerEmail,CC,Subject,EmailText,ColumnOrder,ColumnsRename
 default,,発注ご担当者,,yokazaki@bossard.co.jp,ARIMS発注のお知らせ {OrderDate},"{CompanyName}
 {PersonInCharge} 様
 
 いつもお世話になります。
 ご注文書の発行を何卒宜しくお願い申し上げます。
 
-ボサード株式会社",ID;URNO;SURYO;BIKO;IMPDATE
-878299,光永産業株式会社,,sales@mitsunaga.jp,,,,URNO;ID;SURYO;BIKO;IMPDATE
-123456,Sample Company Ltd.,John Doe,john@sample.com,NONE,,,JSYO1;ID;URNO;SURYO;HB_HINNM;BIKO;IMPDATE;HINNM
+ボサード株式会社",ID;URNO;SURYO;BIKO;IMPDATE,SURYO:単価;HB_HINNM:商品名
+878299,光永産業株式会社,,sales@mitsunaga.jp,,,,URNO;ID;SURYO;BIKO;IMPDATE,TOKCD:CustomerNumber;JYYMD:OrderDate;HINCD:ProductCode
+123456,Sample Company Ltd.,John Doe,john@sample.com,NONE,,,JSYO1;TOKCD;ID;JYYMD;URNO;SURYO;HB_HINNM;BIKO;IMPDATE;HINNM,TOKCD:CustomerNumber;JYYMD:OrderDate;HINCD:ProductCode
