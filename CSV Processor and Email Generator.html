@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>CSV Processor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <style>
+      body {
+        font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN",
+          "Hiragino Sans", Meiryo, sans-serif;
+        max-width: 800px;
+        margin: 20px auto;
+        padding: 20px;
+      }
+      .container {
+        border: 1px solid #ccc;
+        padding: 20px;
+        border-radius: 5px;
+      }
+      .button-group {
+        margin-top: 20px;
+      }
+      button {
+        padding: 10px 20px;
+        margin-right: 10px;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button:hover {
+        background-color: #45a049;
+      }
+      button:disabled {
+        background-color: #a5bca6;
+        color: white;
+      }
+      #emailTemplate {
+        width: 100%;
+        max-width: 697px;
+        height: 200px;
+        margin-top: 10px;
+      }
+      .email-field {
+        margin-bottom: 10px;
+      }
+      .email-field label {
+        display: inline-block;
+        width: 100px;
+      }
+      .email-field input {
+        width: 80%;
+      }
+      .preview {
+        margin-top: 60px;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      #status {
+        margin-top: 10px;
+        padding: 10px;
+        border-radius: 4px;
+      }
+      .success {
+        background-color: #dff0d8;
+        color: #3c763d;
+      }
+      .error {
+        background-color: #f2dede;
+        color: #a94442;
+      }
+      #tablePreview {
+        margin-top: 20px;
+        overflow-x: auto;
+        display: none; /* Hide table preview by default */
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+      }
+      th {
+        background-color: #f2f2f2;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>CSV Processor and Email Generator</h2>
+      <div id="status"></div>
+      <br /><br />
+      <div>
+        <input type="file" id="csvFile" accept=".csv" />
+        <div class="button-group">
+          <button onclick="processCSV()">Process CSV</button>
+        </div>
+
+        <div id="tablePreview">
+          <h3>Table Preview</h3>
+          <table id="previewTable"></table>
+        </div>
+        <div class="button-group">
+          <button id="exportButton" onclick="exportXLSX()" disabled>
+            Export XLSX
+          </button>
+        </div>
+      </div>
+
+      <div class="preview">
+        <h3>Email Template Preview</h3>
+        <div class="email-field">
+          <label for="emailTo">To:</label>
+          <input type="text" id="emailTo" />
+        </div>
+        <div class="email-field">
+          <label for="emailCc">CC:</label>
+          <input type="text" id="emailCc" />
+        </div>
+        <div class="email-field">
+          <label for="emailSubject">Subject:</label>
+          <input type="text" id="emailSubject" />
+        </div>
+        <div class="email-field">
+          <label for="emailTemplate">Body:</label>
+          <textarea id="emailTemplate"></textarea>
+        </div>
+        <p style="color: red;">
+          ➜ Do not forget to attach the downloaded .xlsx file to the email!
+        </p>
+        <div class="button-group">
+          <button id="sendEmailButton" onclick="sendEmail()" disabled>
+            Send Email
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const profilesData = [
+        {
+          CustomerNumber: "default",
+          CompanyName: "",
+          PersonInCharge: "発注ご担当者",
+          CustomerEmail: "",
+          CC: "yokazaki@bossard.co.jp",
+          Subject: "ARIMS発注のお知らせ {OrderDate}",
+          EmailText:
+            "{CompanyName}\n\n{PersonInCharge} 様\n\nいつもお世話になります。\nご注文書の発行を何卒宜しくお願い申し上げます。\n\nボサード株式会社",
+          ColumnOrder:
+            "URNO;GYONO;JYYMD;PAN;HINCD;USERHINCD;HINNM;HB_SPOA;HB_SPOB;HB_SPOC;TANK;SURYO;ADMINPLACE;SETPLACE;PRIORITY",
+          ColumnsRename:
+            "URNO:ordernumber;GYONO:Position;HB_SPOA:dimA;HB_SPOB:dimB;HB_SPOC:dimC;TANK:Price;SURYO:quantity;JYYMD:orderdate;PAN:PAN;HINCD:supplieritemNo;USERHINCD:customeritemNo;ADMINPLACE:site;SETPLACE:Location;PRIORITY:Priority;HINNM:Description;NOYMD:deliverydate;YAKNOYMD:promiseddate",
+        },
+        {
+          CustomerNumber: "878299",
+          CompanyName: "光永産業株式会社",
+          PersonInCharge: "",
+          CustomerEmail: "sales@mitsunaga.jp",
+          CC: "",
+          Subject: "",
+          EmailText: "",
+          ColumnOrder: "",
+          ColumnsRename:
+            "URNO:ordernumber;GYONO:Position;HB_SPOA:dimA;HB_SPOB:dimB;HB_SPOC:dimC;TANK:Price;SURYO:quantity;JYYMD:orderdate;PAN:PAN;HINCD:supplieritemNo;USERHINCD:customeritemNo;ADMINPLACE:site;SETPLACE:Location;PRIORITY:Priority;HINNM:Description;NOYMD:deliverydate;YAKNOYMD:promiseddate",
+        },
+        {
+          CustomerNumber: "123456",
+          CompanyName: "Sample Company Ltd.",
+          PersonInCharge: "John Doe",
+          CustomerEmail: "john@sample.com",
+          CC: "NONE",
+          Subject: "",
+          EmailText: "",
+          ColumnOrder:
+            "JSYO1;TOKCD;ID;JYYMD;URNO;SURYO;HB_HINNM;BIKO;IMPDATE;HINNM",
+          ColumnsRename:
+            "URNO:注文番号;GYONO:位置;HB_SPOA:dimA;HB_SPOB:di mB;HB_SPOC:dimC;TANK:価格;SURYO:数量;JYYMD:注文日;PAN:PAN;HINCD:仕入先品目番号;USERHINCD:顧客品目番号;ADMINPLACE:サイト;SETPLACE:場所;PRIORITY:優先度;HINNM:説明;NOYMD:納品日;YAKNOYMD:約束日",
+        },
+        {
+          CustomerNumber: "222222",
+          CompanyName: "ボサード株式会社",
+          PersonInCharge: "フィリップ",
+          CustomerEmail: "philippe@bossard.com",
+          CC: "",
+          Subject: "",
+          EmailText: "",
+          ColumnOrder: "",
+          ColumnsRename: "",
+        },
+      ];
+
+      let processedData = null;
+      let matchedProfile = null;
+      let defaultProfile = null;
+      let renamedColumns = {};
+
+      // Initialize profiles on startup
+      function initializeProfiles() {
+        defaultProfile = profilesData.find(
+          (profile) => profile.CustomerNumber === "default"
+        );
+        showStatus("Customer profiles loaded successfully", "success");
+      }
+
+      // Call initializeProfiles when the page loads
+      window.onload = initializeProfiles;
+
+      function getEffectiveProfile(customerProfile) {
+        if (!customerProfile || !defaultProfile)
+          return customerProfile || defaultProfile;
+
+        // Create a new object to store the merged profile
+        let mergedProfile = { ...customerProfile };
+
+        // For each property in the default profile
+        Object.keys(defaultProfile).forEach((key) => {
+          // If the customer profile's value is empty or undefined, use the default value
+          if (!mergedProfile[key] || mergedProfile[key].trim() === "") {
+            mergedProfile[key] = defaultProfile[key];
+          }
+          // Special handling for CC field
+          if (key === "CC" && mergedProfile[key] === "NONE") {
+            mergedProfile[key] = "";
+          }
+        });
+
+        return mergedProfile;
+      }
+
+      function showStatus(message, type) {
+        const statusDiv = document.getElementById("status");
+        statusDiv.textContent = message;
+        statusDiv.className = type;
+      }
+
+      function formatDate(dateStr) {
+        // Handle different date formats
+        let date;
+        if (dateStr.includes("-")) {
+          // Handle YYYY-MM-DD format
+          date = new Date(dateStr);
+        } else if (dateStr.includes("/")) {
+          // Handle YYYY/MM/DD format
+          date = new Date(dateStr.replace(/\//g, "-"));
+        } else {
+          // Handle YYYYMMDD format
+          const year = dateStr.substring(0, 4);
+          const month = dateStr.substring(4, 6);
+          const day = dateStr.substring(6, 8);
+          date = new Date(`${year}-${month}-${day}`);
+        }
+
+        if (isNaN(date.getTime())) {
+          throw new Error("Invalid date format");
+        }
+
+        return `${date.getFullYear()}年${
+          date.getMonth() + 1
+        }月${date.getDate()}日`;
+      }
+
+      function processCSV() {
+        const fileInput = document.getElementById("csvFile");
+        const file = fileInput.files[0];
+        if (!file) {
+          showStatus("Please select a CSV file", "error");
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          Papa.parse(file, {
+            header: true,
+            encoding: "Shift-JIS",
+            complete: function (results) {
+              try {
+                const data = results.data;
+
+                // Find customer number from first row
+                const customerNumber = data[0]["TOKCD"].trim();
+                const foundProfile = profilesData.find(
+                  (profile) => profile.CustomerNumber === customerNumber
+                );
+                matchedProfile = getEffectiveProfile(foundProfile);
+
+                if (!matchedProfile) {
+                  throw new Error(
+                    "No matching profile found and no default profile available"
+                  );
+                }
+
+                // Process ColumnsRename
+                renamedColumns = {};
+                if (matchedProfile.ColumnsRename) {
+                  matchedProfile.ColumnsRename.split(";").forEach((pair) => {
+                    const [oldName, newName] = pair.split(":");
+                    renamedColumns[oldName] = newName;
+                  });
+                }
+
+                // Process data according to column order and rename columns
+                const columnOrder = matchedProfile.ColumnOrder.split(";");
+                processedData = data.map((row) => {
+                  const newRow = {};
+                  columnOrder.forEach((col) => {
+                    const newColName = renamedColumns[col] || col;
+                    newRow[newColName] = row[col] || "";
+                  });
+                  return newRow;
+                });
+
+                // Update email template
+                updateEmailTemplate(data[0]["JYYMD"]);
+
+                // Update table preview
+                updateTablePreview();
+
+                // Show table preview and enable export button
+                document.getElementById("tablePreview").style.display = "block";
+                document.getElementById("exportButton").disabled = false;
+
+                showStatus("CSV processed successfully", "success");
+              } catch (error) {
+                showStatus("Error processing CSV: " + error.message, "error");
+              }
+            },
+            error: function (error) {
+              showStatus("Error parsing CSV: " + error, "error");
+            },
+          });
+        };
+        reader.readAsText(file, "Shift-JIS");
+      }
+
+      function updateTablePreview() {
+        const table = document.getElementById("previewTable");
+        table.innerHTML = "";
+
+        if (processedData && processedData.length > 0) {
+          // Create table header
+          const headerRow = table.insertRow();
+          Object.keys(processedData[0]).forEach((key) => {
+            const th = document.createElement("th");
+            th.textContent = key;
+            headerRow.appendChild(th);
+          });
+
+          // Create table body (first 5 rows)
+          processedData.slice(0, 5).forEach((row) => {
+            const tr = table.insertRow();
+            Object.values(row).forEach((value) => {
+              const td = tr.insertCell();
+              td.textContent = value;
+            });
+          });
+        }
+      }
+
+      function exportXLSX() {
+        if (!processedData) {
+          showStatus("Please process a CSV file first", "error");
+          return;
+        }
+
+        try {
+          const worksheet = XLSX.utils.json_to_sheet(processedData);
+          const workbook = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(workbook, worksheet, "Processed Data");
+
+          const today = new Date();
+          const filename = `processed_data_${today.getFullYear()}${String(
+            today.getMonth() + 1
+          ).padStart(2, "0")}${String(today.getDate()).padStart(2, "0")}.xlsx`;
+
+          XLSX.writeFile(workbook, filename);
+          showStatus("XLSX file exported successfully", "success");
+        } catch (error) {
+          showStatus("Error exporting XLSX: " + error.message, "error");
+        }
+        document.getElementById("sendEmailButton").disabled = false;
+      }
+
+      function updateEmailTemplate(orderDate) {
+        if (!matchedProfile) return;
+
+        try {
+          const formattedDate = formatDate(orderDate);
+
+          let subject = matchedProfile.Subject;
+          subject = subject.replace("{OrderDate}", formattedDate);
+
+          let body = matchedProfile.EmailText;
+          body = body
+            .replace("{CompanyName}", matchedProfile.CompanyName || "")
+            .replace("{PersonInCharge}", matchedProfile.PersonInCharge || "");
+
+          document.getElementById("emailTo").value =
+            matchedProfile.CustomerEmail || "";
+          document.getElementById("emailCc").value = matchedProfile.CC || "";
+          document.getElementById("emailSubject").value = subject;
+          document.getElementById("emailTemplate").value = body;
+        } catch (error) {
+          showStatus(
+            "Error updating email template: " + error.message,
+            "error"
+          );
+        }
+      }
+
+      function sendEmail() {
+        if (!matchedProfile) {
+          showStatus("Please process a CSV file first", "error");
+          return;
+        }
+
+        const to = document.getElementById("emailTo").value;
+        const cc = document.getElementById("emailCc").value;
+        const subject = document.getElementById("emailSubject").value;
+        const body = document.getElementById("emailTemplate").value;
+
+        try {
+          let mailtoLink = `mailto:${encodeURIComponent(
+            to
+          )}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(
+            body
+          )}`;
+          if (cc && cc !== "NONE") {
+            mailtoLink += `&cc=${encodeURIComponent(cc)}`;
+          }
+
+          window.location.href = mailtoLink;
+          showStatus("Email client opened successfully", "success");
+        } catch (error) {
+          showStatus("Error opening email client: " + error.message, "error");
+        }
+      }
+    </script>
+  </body>
+</html>
