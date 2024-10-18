@@ -5,152 +5,315 @@
     <title>CSV Processor</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <link
+      rel="icon"
+      href="https://bossard.co.jp/wp-content/uploads/2022/03/Bossard-O.png"
+      sizes="192x192"
+    />
     <style>
+      :root {
+        --primary-color: #007ac3;
+        --secondary-color: #46a8de;
+        --background-color: #f5f5f5;
+        --container-bg: #ffffff;
+        --border-color: #e0e0e0;
+        --text-color: #333333;
+        --button-hover: #005f99;
+        --button-disabled: #82c1e7;
+      }
+
       body {
-        font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN",
-          "Hiragino Sans", Meiryo, sans-serif;
-        max-width: 800px;
-        margin: 20px auto;
-        padding: 20px;
+        background-color: var(--background-color);
+        font-family: Meiryo, "Helvetica Neue", Arial,
+          "Hiragino Kaku Gothic ProN", "Hiragino Sans", sans-serif;
+        margin: 0;
+        padding: 0;
+        color: var(--text-color);
       }
+
       .container {
-        border: 1px solid #ccc;
+        display: flex;
+        width: calc(100% - 40px);
+        gap: 20px;
         padding: 20px;
-        border-radius: 5px;
+        min-height: 90vh;
       }
+
+      .csv-container,
+      .email-container {
+        background-color: var(--container-bg);
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+      }
+
+      .csv-container {
+        width: 40%;
+        min-width: 300px;
+      }
+
+      .csv-container.expanded {
+        width: 80%;
+      }
+
+      .email-container {
+        width: 60%;
+      }
+
+      h2 {
+        color: var(--text-color);
+        margin-bottom: 20px;
+      }
+
       .button-group {
         margin-top: 20px;
       }
+
       button {
         padding: 10px 20px;
         margin-right: 10px;
-        background-color: #4caf50;
+        background-color: var(--primary-color);
         color: white;
         border: none;
         border-radius: 4px;
         cursor: pointer;
+        transition: background-color 0.3s ease;
       }
+
       button:hover {
-        background-color: #45a049;
+        background-color: var(--button-hover);
       }
+
       button:disabled {
-        background-color: #a5bca6;
-        color: white;
+        background-color: var(--button-disabled);
       }
+
+      input[type="file"] {
+        margin-bottom: 10px;
+      }
+
       #emailTemplate {
         width: 100%;
         height: 200px;
         margin-top: 10px;
-      }
-      .preview {
-        margin-top: 60px;
         padding: 10px;
-        border: 1px solid #ddd;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        resize: vertical;
+      }
+
+      .email-field {
+        display: flex;
+        margin-bottom: 10px;
+        align-items: center;
+      }
+
+      .email-field label {
+        width: 70px;
+        color: var(--text-color);
+      }
+
+      .email-field input {
+        flex: 1;
+        height: 30px;
+        padding: 5px;
+        border: 1px solid var(--border-color);
         border-radius: 4px;
       }
+
+      .preview {
+        margin-top: 30px;
+      }
+
       #status {
         margin-top: 10px;
         padding: 10px;
         border-radius: 4px;
       }
+
       .success {
-        background-color: #dff0d8;
-        color: #3c763d;
+        background-color: #d6efff;
+        color: #005f99;
       }
+
       .error {
         background-color: #f2dede;
         color: #a94442;
       }
+
       #tablePreview {
         margin-top: 20px;
         overflow-x: auto;
-        display: none; /* Hide table preview by default */
+        display: none;
       }
+
       table {
-        border-collapse: collapse;
         width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9em;
       }
+
       th,
       td {
-        border: 1px solid #ddd;
-        padding: 8px;
+        border: 1px solid var(--border-color);
+        padding: 5px;
         text-align: left;
+        min-width: 60px;
+      }
+      td {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 0.85em;
+        max-width: 200px;
       }
       th {
-        background-color: #f2f2f2;
+        font-size: 0.9em;
+        background-color: #474747;
+        color: white;
+      }
+
+      tr:nth-child(even) {
+        background-color: #f8f8f8;
+      }
+
+      @media (max-width: 768px) {
+        .container {
+          flex-direction: column;
+        }
+
+        .csv-container,
+        .email-container {
+          width: 100%;
+        }
       }
     </style>
   </head>
   <body>
     <div class="container">
-      <h2>CSV Processor and Email Generator</h2>
-      <div id="status"></div>
-      <br /><br />
-      <div>
-        <input type="file" id="csvFile" accept=".csv" />
-        <div class="button-group">
-          <button onclick="processCSV()">Process CSV</button>
-        </div>
+      <div class="csv-container">
+        <h2>CSV プロセッサ</h2>
+        <div id="status"></div>
+        <br /><br />
+        <div>
+          <input type="file" id="csvFile" accept=".csv" />
+          <div class="button-group">
+            <button onclick="processCSV()">CSV 処理</button>
+          </div>
 
-        <div id="tablePreview">
-          <h3>Table Preview</h3>
-          <table id="previewTable"></table>
-        </div>
-        <div class="button-group">
-          <button id="exportButton" onclick="exportXLSX()" disabled>
-            Export XLSX
-          </button>
+          <div id="tablePreview">
+            <h3>テーブルプレビュー</h3>
+            <table id="previewTable"></table>
+          </div>
+          <div class="button-group">
+            <button id="exportButton" onclick="exportXLSX()" disabled>
+              エクスポート
+            </button>
+          </div>
         </div>
       </div>
-
-      <div class="preview">
-        <h3>Email Template Preview</h3>
-        <div>
-          <label>Subject:</label>
-          <input type="text" id="emailSubject" style="width: 100%;" />
-        </div>
-        <div>
-          <label>Body:</label>
-          <textarea id="emailTemplate"></textarea>
-        </div>
-        <div class="button-group">
-          <button onclick="sendEmail()">Send Email</button>
+      <div class="email-container">
+        <div class="preview">
+          <h2>メール</h2>
+          <div class="email-field">
+            <label for="emailTo">宛先:</label>
+            <input type="text" id="emailTo" />
+          </div>
+          <div class="email-field">
+            <label for="emailCc">CC:</label>
+            <input type="text" id="emailCc" />
+          </div>
+          <div class="email-field">
+            <label for="emailSubject">件名:</label>
+            <input type="text" id="emailSubject" />
+          </div>
+          <div class="email-field">
+            <label for="emailTemplate">本文:</label>
+            <textarea id="emailTemplate"></textarea>
+          </div>
+          <!-- <p style="color: red">
+            ➜ ダウンロードした .xlsx
+            ファイルをメールに添付することを忘れないでください！
+          </p> -->
+          <div class="button-group">
+            <button id="sendEmailButton" onclick="sendEmail()" disabled>
+              メールの作成
+            </button>
+          </div>
         </div>
       </div>
     </div>
-
+    <h3 style="text-align: center; margin: 0">©DX推進室</h3>
     <script>
+      // DELIVERY in ColumnOrder will select YAKNOYMD (promised date). If YAKNOYMD is empty, it will select NOYMD (delivery date) instead.
+      // If you do not want the default CC email address for a profile, add CC: "NONE", to that profile settings.
+      const profilesData = [
+        {
+          CustomerNumber: "default",
+          CompanyName: "",
+          PersonInCharge: "発注ご担当者",
+          CustomerEmail: "",
+          CC: "yokazaki@bossard.co.jp",
+          Subject: "ARIMS発注のお知らせ {OrderDate}",
+          EmailText:
+            "{CompanyName}\n\n{PersonInCharge} 様\n\nいつもお世話になります。\nご注文書の発行を何卒宜しくお願い申し上げます。\n\nボサード株式会社",
+          ColumnOrder:
+            "URNO;GYONO;JYYMD;PAN;HINCD;USERHINCD;HINNM;HB_SPOA;HB_SPOB;HB_SPOC;TANK;SURYO;ADMINPLACE;SETPLACE;PRIORITY;DELIVERY",
+          ColumnsRename:
+            "URNO:ordernumber;GYONO:Position;HB_SPOA:dimA;HB_SPOB:dimB;HB_SPOC:dimC;TANK:Price;SURYO:quantity;JYYMD:orderdate;PAN:PAN;HINCD:supplieritemNo;USERHINCD:customeritemNo;ADMINPLACE:site;SETPLACE:Location;PRIORITY:Priority;HINNM:Description;NOYMD:deliverydate;YAKNOYMD:promiseddate;DELIVERY:Delivery Date",
+        },
+        {
+          CustomerNumber: "878299",
+          CompanyName: "光永産業株式会社",
+          PersonInCharge: "",
+          CustomerEmail: "sales@mitsunaga.jp",
+        },
+        {
+          CustomerNumber: "297200",
+          CompanyName: "Sample Company Ltd.",
+          PersonInCharge: "John Doe",
+          CustomerEmail: "john@sample.com",
+          CC: "NONE",
+          Subject: "ARIMS発注のお知らせ {OrderDate}",
+          EmailText:
+            "{CompanyName}\n\n{PersonInCharge} 様\n\nいつもお世話になります。\nご注文書の発行を何卒宜しくお願い申し上げます。\n\nボサード株式会社",
+          ColumnOrder:
+            "URNO;GYONO;JYYMD;PAN;HINCD;USERHINCD;HINNM;HB_SPOA;HB_SPOB;HB_SPOC;TANK;SURYO;ADMINPLACE;SETPLACE;PRIORITY;DELIVERY",
+          ColumnsRename:
+            "URNO:注文番号;GYONO:行番号;HB_SPOA:サイズA;HB_SPOB:サイズB;HB_SPOC:サイズC;TANK:単価;SURYO:数量;JYYMD:注文日;PAN:PAN;HINCD:仕入先品番;USERHINCD:品番;ADMINPLACE:管理場所;SETPLACE:設置場所;PRIORITY:優先度;HINNM:品名;DELIVERY:納期;",
+        },
+        {
+          CustomerNumber: "222222",
+          CompanyName: "Bossard AG",
+          PersonInCharge: "フィリップ",
+          CustomerEmail: "philippe@bossard.com",
+        },
+        {
+          CustomerNumber: "347838",
+          CompanyName: "Bossard AG",
+          PersonInCharge: "フィリップ",
+          CustomerEmail: "philippe@bossard.com",
+          ColumnOrder:
+            "JYYMD;ADMINPLACE;SETPLACE;GYONO;PAN;HINCD;USERHINCD;URNO;HINNM;HB_SPOA;HB_SPOB;HB_SPOC;TANK;SURYO;PRIORITY",
+        },
+      ];
+
       let processedData = null;
-      let customerProfiles = null;
       let matchedProfile = null;
       let defaultProfile = null;
       let renamedColumns = {};
 
-      // Load customer profiles on startup
-      fetch("profiles.csv")
-        .then((response) => response.text())
-        .then((data) => {
-          Papa.parse(data, {
-            header: true,
-            encoding: "UTF-8",
-            complete: function (results) {
-              customerProfiles = results.data.filter(
-                (profile) =>
-                  profile.CustomerNumber && profile.CustomerNumber.trim() !== ""
-              );
-              defaultProfile = customerProfiles.find(
-                (profile) => profile.CustomerNumber === "default"
-              );
-              showStatus("Customer profiles loaded successfully", "success");
-            },
-            error: function (error) {
-              showStatus("Error loading profiles: " + error, "error");
-            },
-          });
-        })
-        .catch((error) =>
-          showStatus("Error loading profiles: " + error, "error")
+      // Initialize profiles on startup
+      function initializeProfiles() {
+        defaultProfile = profilesData.find(
+          (profile) => profile.CustomerNumber === "default"
         );
+        showStatus("顧客プロファイルが正常に読み込まれました", "success");
+      }
+
+      // Call initializeProfiles when the page loads
+      window.onload = initializeProfiles;
 
       function getEffectiveProfile(customerProfile) {
         if (!customerProfile || !defaultProfile)
@@ -210,7 +373,7 @@
         const fileInput = document.getElementById("csvFile");
         const file = fileInput.files[0];
         if (!file) {
-          showStatus("Please select a CSV file", "error");
+          showStatus("CSV ファイルを選択してください", "error");
           return;
         }
 
@@ -225,14 +388,14 @@
 
                 // Find customer number from first row
                 const customerNumber = data[0]["TOKCD"].trim();
-                const foundProfile = customerProfiles.find(
+                const foundProfile = profilesData.find(
                   (profile) => profile.CustomerNumber === customerNumber
                 );
                 matchedProfile = getEffectiveProfile(foundProfile);
 
                 if (!matchedProfile) {
                   throw new Error(
-                    "No matching profile found and no default profile available"
+                    "一致するプロファイルが見つかりません。デフォルトのプロファイルは利用できません"
                   );
                 }
 
@@ -246,12 +409,26 @@
                 }
 
                 // Process data according to column order and rename columns
-                const columnOrder = matchedProfile.ColumnOrder.split(";");
+                let columnOrder = matchedProfile.ColumnOrder.split(";");
+
                 processedData = data.map((row) => {
                   const newRow = {};
                   columnOrder.forEach((col) => {
-                    const newColName = renamedColumns[col] || col;
-                    newRow[newColName] = row[col] || "";
+                    let value = "";
+                    let actualCol = col;
+
+                    if (col === "DELIVERY") {
+                      if (row["YAKNOYMD"] && row["YAKNOYMD"].trim() !== "") {
+                        value = row["YAKNOYMD"];
+                      } else if (row["NOYMD"] && row["NOYMD"].trim() !== "") {
+                        value = row["NOYMD"];
+                      }
+                    } else {
+                      value = row[col] || "";
+                    }
+
+                    const newColName = renamedColumns[actualCol] || actualCol;
+                    newRow[newColName] = value; // Include empty values
                   });
                   return newRow;
                 });
@@ -264,15 +441,20 @@
 
                 // Show table preview and enable export button
                 document.getElementById("tablePreview").style.display = "block";
+                // Expand the left section
+                document
+                  .querySelector(".csv-container")
+                  .classList.add("expanded");
+
                 document.getElementById("exportButton").disabled = false;
 
-                showStatus("CSV processed successfully", "success");
+                showStatus("CSV は正常に処理されました", "success");
               } catch (error) {
-                showStatus("Error processing CSV: " + error.message, "error");
+                showStatus("CSV の処理エラー: " + error.message, "error");
               }
             },
             error: function (error) {
-              showStatus("Error parsing CSV: " + error, "error");
+              showStatus("CSV の解析エラー: " + error, "error");
             },
           });
         };
@@ -304,26 +486,57 @@
       }
 
       function exportXLSX() {
-        if (!processedData) {
-          showStatus("Please process a CSV file first", "error");
+        if (!processedData || !matchedProfile) {
+          showStatus("最初に CSV ファイルを処理してください", "error");
           return;
         }
 
         try {
-          const worksheet = XLSX.utils.json_to_sheet(processedData);
+          // Convert all values to strings
+          const stringData = processedData.map((row) =>
+            Object.fromEntries(
+              Object.entries(row).map(([key, value]) => [key, String(value)])
+            )
+          );
+
+          const worksheet = XLSX.utils.json_to_sheet(stringData);
+
+          // Set all cells to text format
+          const range = XLSX.utils.decode_range(worksheet["!ref"]);
+          for (let R = range.s.r; R <= range.e.r; ++R) {
+            for (let C = range.s.c; C <= range.e.c; ++C) {
+              const cell_address = { c: C, r: R };
+              const cell_ref = XLSX.utils.encode_cell(cell_address);
+              if (!worksheet[cell_ref]) continue;
+              worksheet[cell_ref].t = "s"; // Set cell type to string
+            }
+          }
+
           const workbook = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(workbook, worksheet, "Processed Data");
 
-          const today = new Date();
-          const filename = `processed_data_${today.getFullYear()}${String(
-            today.getMonth() + 1
-          ).padStart(2, "0")}${String(today.getDate()).padStart(2, "0")}.xlsx`;
+          // Generate filename in the new format
+          const now = new Date();
+          const dateString =
+            now.getFullYear() +
+            String(now.getMonth() + 1).padStart(2, "0") +
+            String(now.getDate()).padStart(2, "0");
+          const timeString =
+            String(now.getHours()).padStart(2, "0") +
+            String(now.getMinutes()).padStart(2, "0") +
+            String(now.getSeconds()).padStart(2, "0");
+          const customerNumber = matchedProfile.CustomerNumber || "Unknown";
+          const filename = `ARIMS_ORDRSP_${customerNumber}_${dateString}-${timeString}.xlsx`;
 
           XLSX.writeFile(workbook, filename);
-          showStatus("XLSX file exported successfully", "success");
+          showStatus(
+            `XLSX ファイルが正常にエクスポートされました: ${filename}`,
+            "success"
+          );
         } catch (error) {
-          showStatus("Error exporting XLSX: " + error.message, "error");
+          showStatus("XLSX エクスポートエラー: " + error.message, "error");
         }
+        document.getElementById("sendEmailButton").disabled = false;
       }
 
       function updateEmailTemplate(orderDate) {
@@ -340,11 +553,15 @@
             .replace("{CompanyName}", matchedProfile.CompanyName || "")
             .replace("{PersonInCharge}", matchedProfile.PersonInCharge || "");
 
+          document.getElementById("emailTo").value =
+            matchedProfile.CustomerEmail || "";
+          document.getElementById("emailCc").value = matchedProfile.CC || "";
           document.getElementById("emailSubject").value = subject;
           document.getElementById("emailTemplate").value = body;
         } catch (error) {
           showStatus(
-            "Error updating email template: " + error.message,
+            "メール テンプレートの更新中にエラーが発生しました: " +
+              error.message,
             "error"
           );
         }
@@ -352,27 +569,32 @@
 
       function sendEmail() {
         if (!matchedProfile) {
-          showStatus("Please process a CSV file first", "error");
+          showStatus("最初に CSV ファイルを処理してください", "error");
           return;
         }
 
+        const to = document.getElementById("emailTo").value;
+        const cc = document.getElementById("emailCc").value;
         const subject = document.getElementById("emailSubject").value;
         const body = document.getElementById("emailTemplate").value;
-        const email = matchedProfile.CustomerEmail;
-        const cc = matchedProfile.CC;
 
         try {
-          let mailtoLink = `mailto:${email}?subject=${encodeURIComponent(
-            subject
-          )}&body=${encodeURIComponent(body)}`;
+          let mailtoLink = `mailto:${encodeURIComponent(
+            to
+          )}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(
+            body
+          )}`;
           if (cc && cc !== "NONE") {
             mailtoLink += `&cc=${encodeURIComponent(cc)}`;
           }
 
           window.location.href = mailtoLink;
-          showStatus("Email client opened successfully", "success");
+          showStatus("メールクライアントが正常に開きました", "success");
         } catch (error) {
-          showStatus("Error opening email client: " + error.message, "error");
+          showStatus(
+            "メールクライアントを開く際のエラー: " + error.message,
+            "error"
+          );
         }
       }
     </script>
